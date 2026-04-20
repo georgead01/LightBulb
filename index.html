@@ -14,7 +14,7 @@
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      gap: 52px;
+      gap: 48px;
       transition: background 0.5s ease;
     }
 
@@ -23,18 +23,13 @@
       image-rendering: crisp-edges;
     }
 
-    #bulb {
-      transition: filter 0.4s ease;
-    }
+    #bulb { transition: filter 0.4s ease; }
 
     #sw {
       cursor: pointer;
       transition: transform 0.08s ease;
     }
-
-    #sw:active {
-      transform: scale(0.93);
-    }
+    #sw:active { transform: scale(0.94); }
   </style>
 </head>
 <body>
@@ -42,89 +37,174 @@
   <canvas id="sw"></canvas>
 
   <script>
-    const P = 22; // pixel block size in actual pixels
+    const P = 12; // screen pixels per grid pixel
     let on = false;
 
-    // ── Light bulb ── 9 wide × 12 tall
-    // 0 = transparent  1 = glass  2 = base/socket
-    const BULB = [
-      [0,0,0,1,1,1,0,0,0],
-      [0,0,1,1,1,1,1,0,0],
-      [0,1,1,1,1,1,1,1,0],
-      [0,1,1,1,1,1,1,1,0],
-      [0,1,1,1,1,1,1,1,0],
-      [0,1,1,1,1,1,1,1,0],
-      [0,0,1,1,1,1,1,0,0],
-      [0,0,0,1,1,1,0,0,0],
-      [0,0,0,2,1,2,0,0,0],
-      [0,0,0,2,2,2,0,0,0],
-      [0,0,0,2,2,2,0,0,0],
-      [0,0,0,2,2,2,0,0,0],
-    ];
+    // ─────────────────────────────────────────
+    //  BULB  (21 wide × 28 tall)
+    //  0 = bg
+    //  1 = glass body
+    //  2 = glass highlight (inner-left edge)
+    //  3 = filament wire
+    //  4 = base collar
+    //  5 = base thread-A
+    //  6 = base thread-B
+    // ─────────────────────────────────────────
+    function buildBulb(lit) {
+      const W = 21, H = 28;
+      const g = Array.from({length: H}, () => new Array(W).fill(0));
 
-    const BULB_COLORS = {
-      off: { 1: '#4e4e60', 2: '#3c3028' },
-      on:  { 1: '#FFE840', 2: '#5a4c30' },
+      function row(r, c1, c2, v) {
+        for (let c = c1; c <= c2; c++) g[r][c] = v;
+      }
+
+      // Glass dome spans [col-start, col-end] per row
+      const dome = [
+        [9,11],[7,13],[5,15],[4,16],[3,17],[2,18],[2,18],
+        [1,19],[1,19],[1,19],[1,19],[1,19],
+        [2,18],[3,17],[4,16],[5,15],[6,14],[7,13],
+      ];
+      dome.forEach(([a,b], r) => row(r, a, b, 1));
+
+      // Narrow neck
+      row(18, 8, 12, 1);
+      row(19, 8, 12, 1);
+
+      // Glass highlight — curved strip on upper-left of globe
+      const hiPx = [
+        [2,6],[3,5],[3,6],[4,4],[4,5],[5,3],[5,4],
+        [6,3],[7,2],[7,3],[8,2],[9,2],[10,2],
+      ];
+      hiPx.forEach(([r,c]) => { if (g[r][c] === 1) g[r][c] = 2; });
+
+      // Filament support wires (cols 8 & 12, rows 7-12)
+      for (let r = 7; r <= 12; r++) {
+        if (g[r][8])  g[r][8]  = 3;
+        if (g[r][12]) g[r][12] = 3;
+      }
+      // Filament coil
+      row(12, 8, 12, 3);
+      [8, 10, 12].forEach(c => g[13][c] = 3);
+      [9, 11].forEach(c    => g[14][c] = 3);
+      [8, 10, 12].forEach(c => g[15][c] = 3);
+
+      // Base collar
+      row(20, 7, 13, 4);
+      row(21, 7, 13, 4);
+
+      // Threaded base (alternating stripes)
+      for (let r = 22; r <= 27; r++) {
+        row(r, 8, 12, r % 2 === 0 ? 5 : 6);
+      }
+
+      return g;
+    }
+
+    const BULB_OFF = {
+      1: '#48485a', 2: '#5c5c70', 3: '#282830',
+      4: '#504030', 5: '#443828', 6: '#382e20',
+    };
+    const BULB_ON = {
+      1: '#FFE840', 2: '#FFFFF4', 3: '#ffffff',
+      4: '#6a5438', 5: '#5a4830', 6: '#483c24',
     };
 
-    // ── Wall switch ── 7 wide × 10 tall
-    // 1 = plate border  2 = plate face  3 = toggle nub
-    const SW_OFF = [
-      [1,1,1,1,1,1,1],
-      [1,2,2,2,2,2,1],
-      [1,2,3,3,3,2,1],
-      [1,2,3,3,3,2,1],
-      [1,2,3,3,3,2,1],
-      [1,2,2,2,2,2,1],
-      [1,2,2,2,2,2,1],
-      [1,2,2,2,2,2,1],
-      [1,2,2,2,2,2,1],
-      [1,1,1,1,1,1,1],
-    ];
+    // ─────────────────────────────────────────
+    //  SWITCH  (14 wide × 20 tall)
+    //  1 = plate border
+    //  2 = plate face
+    //  3 = screw
+    //  4 = rocker raised
+    //  5 = rocker depressed
+    //  6 = rocker divider
+    // ─────────────────────────────────────────
+    function buildSwitch(lit) {
+      const W = 14, H = 20;
+      const g = Array.from({length: H}, () => new Array(W).fill(0));
 
-    const SW_ON = [
-      [1,1,1,1,1,1,1],
-      [1,2,2,2,2,2,1],
-      [1,2,2,2,2,2,1],
-      [1,2,2,2,2,2,1],
-      [1,2,2,2,2,2,1],
-      [1,2,2,2,2,2,1],
-      [1,2,3,3,3,2,1],
-      [1,2,3,3,3,2,1],
-      [1,2,3,3,3,2,1],
-      [1,1,1,1,1,1,1],
-    ];
+      function row(r, c1, c2, v) {
+        for (let c = c1; c <= c2; c++) g[r][c] = v;
+      }
 
-    const SW_COLORS = { 1: '#b8b4ac', 2: '#d4d0c8', 3: '#242424' };
+      // Outer border
+      row(0, 0, W-1, 1);
+      row(H-1, 0, W-1, 1);
+      for (let r = 1; r < H-1; r++) { g[r][0] = 1; g[r][W-1] = 1; }
 
-    function drawGrid(id, grid, colorMap) {
+      // Plate face
+      for (let r = 1; r < H-1; r++) row(r, 1, W-2, 2);
+
+      // Corner screws
+      g[1][1] = 3; g[1][W-2] = 3;
+      g[H-2][1] = 3; g[H-2][W-2] = 3;
+
+      // Screw cross marks (1px, horizontal + vertical inside screw)
+      // kept minimal — just single pixel difference
+
+      // Rocker area rows 3-16
+      // Top half: rows 3-9  | Bottom half: rows 10-16
+      // Divider: row 9 / 10 border
+      const topVal    = lit ? 5 : 4; // top pressed when ON
+      const bottomVal = lit ? 4 : 5; // bottom raised when ON
+
+      for (let r = 3; r <= 8; r++)  row(r, 3, W-4, topVal);
+      row(9, 3, W-4, 6);            // divider
+      for (let r = 10; r <= 16; r++) row(r, 3, W-4, bottomVal);
+
+      // Inner shadow line on depressed rocker (gives 3-D feel)
+      if (lit) {
+        // top half depressed → shadow on left + top edges
+        for (let r = 3; r <= 8; r++) g[r][3] = 6;
+        row(3, 3, W-4, 6);
+      } else {
+        // bottom half depressed → shadow on left + top of bottom half
+        for (let r = 10; r <= 16; r++) g[r][3] = 6;
+        row(10, 3, W-4, 6);
+      }
+
+      return g;
+    }
+
+    const SW_PALETTE = {
+      1: '#a8a4a0',  // border
+      2: '#dedad2',  // plate face
+      3: '#7a7672',  // screw
+      4: '#ccc8c0',  // raised rocker
+      5: '#aaa69e',  // depressed rocker
+      6: '#8a8680',  // shadow / divider
+    };
+
+    // ─────────────────────────────────────────
+    //  Renderer
+    // ─────────────────────────────────────────
+    function drawGrid(id, grid, palette, pixelSize) {
       const canvas = document.getElementById(id);
       const rows = grid.length, cols = grid[0].length;
-      canvas.width  = cols * P;
-      canvas.height = rows * P;
+      canvas.width  = cols * pixelSize;
+      canvas.height = rows * pixelSize;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const v = grid[r][c];
-          const color = colorMap[v];
+          const color = palette[v];
           if (color) {
             ctx.fillStyle = color;
-            ctx.fillRect(c * P, r * P, P, P);
+            ctx.fillRect(c * pixelSize, r * pixelSize, pixelSize, pixelSize);
           }
         }
       }
     }
 
     function render() {
-      drawGrid('bulb', BULB, on ? BULB_COLORS.on : BULB_COLORS.off);
-      drawGrid('sw', on ? SW_ON : SW_OFF, SW_COLORS);
+      drawGrid('bulb', buildBulb(on), on ? BULB_ON : BULB_OFF, P);
+      drawGrid('sw',   buildSwitch(on), SW_PALETTE, P);
 
       document.getElementById('bulb').style.filter = on
-        ? 'drop-shadow(0 0 18px #FFD700) drop-shadow(0 0 42px #FF8C00)'
+        ? 'drop-shadow(0 0 22px #FFD700) drop-shadow(0 0 55px #FF8C00)'
         : 'none';
 
-      document.body.style.background = on ? '#1a1a0c' : '#0d0d1a';
+      document.body.style.background = on ? '#1c1a08' : '#0d0d1a';
     }
 
     document.getElementById('sw').addEventListener('click', () => {
