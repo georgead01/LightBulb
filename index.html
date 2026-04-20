@@ -58,35 +58,35 @@
         for (let c = c1; c <= c2; c++) g[r][c] = v;
       }
 
-      // Glass dome spans [col-start, col-end] per row
+      // Glass dome — single equator row makes it rounder
       const dome = [
-        [9,11],[7,13],[5,15],[4,16],[3,17],[2,18],[2,18],
-        [1,19],[1,19],[1,19],[1,19],[1,19],
-        [2,18],[3,17],[4,16],[5,15],[6,14],[7,13],
+        [9,11],[7,13],[6,14],[5,15],[4,16],[3,17],[2,18],
+        [1,19],                               // equator: one row only
+        [2,18],[3,17],[4,16],[5,15],[6,14],[7,13],[7,13],[8,12],[8,12],[8,12],
       ];
       dome.forEach(([a,b], r) => row(r, a, b, 1));
 
       // Narrow neck
       row(18, 8, 12, 1);
-      row(19, 8, 12, 1);
+      row(19, 9, 11, 1);
 
       // Glass highlight — curved strip on upper-left of globe
       const hiPx = [
         [2,6],[3,5],[3,6],[4,4],[4,5],[5,3],[5,4],
-        [6,3],[7,2],[7,3],[8,2],[9,2],[10,2],
+        [6,2],[6,3],[7,2],[8,2],[9,3],[10,4],
       ];
       hiPx.forEach(([r,c]) => { if (g[r][c] === 1) g[r][c] = 2; });
 
-      // Filament support wires (cols 8 & 12, rows 7-12)
-      for (let r = 7; r <= 12; r++) {
+      // Filament support wires (cols 8 & 12, rows 6-11)
+      for (let r = 6; r <= 11; r++) {
         if (g[r][8])  g[r][8]  = 3;
         if (g[r][12]) g[r][12] = 3;
       }
       // Filament coil
-      row(12, 8, 12, 3);
-      [8, 10, 12].forEach(c => g[13][c] = 3);
-      [9, 11].forEach(c    => g[14][c] = 3);
-      [8, 10, 12].forEach(c => g[15][c] = 3);
+      row(11, 8, 12, 3);
+      [8, 10, 12].forEach(c => g[12][c] = 3);
+      [9, 11].forEach(c    => g[13][c] = 3);
+      [8, 10, 12].forEach(c => g[14][c] = 3);
 
       // Base collar
       row(20, 7, 13, 4);
