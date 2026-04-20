@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Button</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0d0d1a;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      gap: 52px;
+      transition: background 0.5s ease;
+    }
+
+    canvas {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    #bulb {
+      transition: filter 0.4s ease;
+    }
+
+    #sw {
+      cursor: pointer;
+      transition: transform 0.08s ease;
+    }
+
+    #sw:active {
+      transform: scale(0.93);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bulb"></canvas>
+  <canvas id="sw"></canvas>
+
+  <script>
+    const P = 22; // pixel block size in actual pixels
+    let on = false;
+
+    // ── Light bulb ── 9 wide × 12 tall
+    // 0 = transparent  1 = glass  2 = base/socket
+    const BULB = [
+      [0,0,0,1,1,1,0,0,0],
+      [0,0,1,1,1,1,1,0,0],
+      [0,1,1,1,1,1,1,1,0],
+      [0,1,1,1,1,1,1,1,0],
+      [0,1,1,1,1,1,1,1,0],
+      [0,1,1,1,1,1,1,1,0],
+      [0,0,1,1,1,1,1,0,0],
+      [0,0,0,1,1,1,0,0,0],
+      [0,0,0,2,1,2,0,0,0],
+      [0,0,0,2,2,2,0,0,0],
+      [0,0,0,2,2,2,0,0,0],
+      [0,0,0,2,2,2,0,0,0],
+    ];
+
+    const BULB_COLORS = {
+      off: { 1: '#4e4e60', 2: '#3c3028' },
+      on:  { 1: '#FFE840', 2: '#5a4c30' },
+    };
+
+    // ── Wall switch ── 7 wide × 10 tall
+    // 1 = plate border  2 = plate face  3 = toggle nub
+    const SW_OFF = [
+      [1,1,1,1,1,1,1],
+      [1,2,2,2,2,2,1],
+      [1,2,3,3,3,2,1],
+      [1,2,3,3,3,2,1],
+      [1,2,3,3,3,2,1],
+      [1,2,2,2,2,2,1],
+      [1,2,2,2,2,2,1],
+      [1,2,2,2,2,2,1],
+      [1,2,2,2,2,2,1],
+      [1,1,1,1,1,1,1],
+    ];
+
+    const SW_ON = [
+      [1,1,1,1,1,1,1],
+      [1,2,2,2,2,2,1],
+      [1,2,2,2,2,2,1],
+      [1,2,2,2,2,2,1],
+      [1,2,2,2,2,2,1],
+      [1,2,2,2,2,2,1],
+      [1,2,3,3,3,2,1],
+      [1,2,3,3,3,2,1],
+      [1,2,3,3,3,2,1],
+      [1,1,1,1,1,1,1],
+    ];
+
+    const SW_COLORS = { 1: '#b8b4ac', 2: '#d4d0c8', 3: '#242424' };
+
+    function drawGrid(id, grid, colorMap) {
+      const canvas = document.getElementById(id);
+      const rows = grid.length, cols = grid[0].length;
+      canvas.width  = cols * P;
+      canvas.height = rows * P;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const v = grid[r][c];
+          const color = colorMap[v];
+          if (color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(c * P, r * P, P, P);
+          }
+        }
+      }
+    }
+
+    function render() {
+      drawGrid('bulb', BULB, on ? BULB_COLORS.on : BULB_COLORS.off);
+      drawGrid('sw', on ? SW_ON : SW_OFF, SW_COLORS);
+
+      document.getElementById('bulb').style.filter = on
+        ? 'drop-shadow(0 0 18px #FFD700) drop-shadow(0 0 42px #FF8C00)'
+        : 'none';
+
+      document.body.style.background = on ? '#1a1a0c' : '#0d0d1a';
+    }
+
+    document.getElementById('sw').addEventListener('click', () => {
+      on = !on;
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>
